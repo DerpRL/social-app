@@ -1,21 +1,32 @@
 // Imports
-import { MONGO_DB_CLIENT, MONGO_DB_DATABASE_NAME } from "./builders";
+import { Collection } from "mongodb";
+import { connectMongoDB, getMongoDatabase, getMongoCollection, disconnectMongoDB } from "../mongoDB/connectionCreator";
+import { User } from "../mongoDB/interfaces";
+import { MONGO_DB_DATABASE } from "./constants";
 
 
-export async function createApp() {
+export async function createApp(): Promise<void> {
     try {
-        await MONGO_DB_CLIENT.connect();
-        console.log('Connected to MongoDB');
+        await connectMongoDB();
+        const mongoDatabase = await getMongoDatabase(MONGO_DB_DATABASE);
+        const usersCollection: Collection<User> = await getMongoCollection(mongoDatabase, "users");
 
-        const db = MONGO_DB_CLIENT.db(MONGO_DB_DATABASE_NAME);
-        const collection = db.collection('documents')
+        await usersCollection.insertOne({
+            name: "John Doe",
+            age: 30,
+            email: "kenaa@example.com",
+            password: "123456",
+            registeredTimestamp: new Date().toISOString()
+        })
 
-        console.log(collection);
+        const users = usersCollection.find({});
 
-        return 'done';
+        for await (const user of users) {
+            console.log(`${user.name} has email, ${user.email}}!`);
+        }        
     } catch (error) {
-        console.log(error);
+        console.error('Error starting the application', error);
     } finally {
-        MONGO_DB_CLIENT.close();
+        await disconnectMongoDB();
     }
 }
